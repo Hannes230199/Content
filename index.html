@@ -26,15 +26,6 @@
                 height: 400px;
             }
         }
-        /* Custom transition for smooth card expansion */
-        details .content {
-            max-height: 0;
-            overflow: hidden;
-            transition: max-height 0.5s ease-in-out;
-        }
-        details[open] .content {
-            max-height: 1000px; /* Large enough to not clip content */
-        }
         .loader {
             border: 4px solid #f3f3f3;
             border-top: 4px solid #06b6d4;
@@ -113,7 +104,7 @@
                 </div>
                  <div class="p-6 bg-cyan-50 border border-cyan-200 rounded-xl shadow-sm col-span-1 sm:col-span-2">
                     <h3 class="font-bold text-slate-900 text-lg">About this Calendar</h3>
-                    <p class="text-slate-600 mt-2 text-sm">This interactive tool translates our static content calendar into a dynamic planning resource. Use the filters above to isolate events by market, sport, or importance. Click on any event card's 'View Details' to see tailored content angles and strategic opportunities, helping us deliver the best experience to sports fans everywhere.</p>
+                    <p class="text-slate-600 mt-2 text-sm">This interactive tool translates our static content calendar into a dynamic planning resource. Use the filters above to isolate events by market, sport, or importance. This helps us deliver the best experience to sports fans everywhere.</p>
                 </div>
             </div>
         </section>
@@ -176,36 +167,20 @@
             } else {
                 filteredEvents.forEach(event => {
                     const card = document.createElement('div');
-                    card.className = 'bg-white rounded-xl shadow-sm transition hover:shadow-lg';
+                    card.className = 'bg-white rounded-xl shadow-sm transition hover:shadow-lg p-5';
                     card.innerHTML = `
-                        <div class="p-5">
-                            <div class="flex justify-between items-start">
-                                <p class="text-xs text-slate-500">${event.date}</p>
-                                <span class="${getSignificanceClass(event.significance)} text-xs font-semibold mr-2 px-2.5 py-0.5 rounded-full">${event.significance}</span>
-                            </div>
-                            <h3 class="font-bold text-lg mt-2 text-slate-900">${createSportIcon(event.sport)} ${event.name}</h3>
-                            <p class="text-sm text-slate-600 mt-1">📍 ${event.location}</p>
-                            <div class="mt-3 text-xs">
-                                <span class="font-semibold">Markets:</span>
-                                ${event.relevance && event.relevance.map(m => `<span class="inline-block bg-slate-100 rounded-full px-2 py-1 font-medium text-slate-700 mr-1 mb-1">${m}</span>`).join('')}
+                        <div class="flex justify-between items-start">
+                            <p class="text-xs text-slate-500">${event.date}</p>
+                            <span class="${getSignificanceClass(event.significance)} text-xs font-semibold mr-2 px-2.5 py-0.5 rounded-full">${event.significance}</span>
+                        </div>
+                        <h3 class="font-bold text-lg mt-2 text-slate-900">${createSportIcon(event.sport)} ${event.name}</h3>
+                        <p class="text-sm text-slate-600 mt-1">📍 ${event.location}</p>
+                        <div class="mt-4 pt-4 border-t border-slate-200 text-xs">
+                            <span class="font-semibold text-slate-700">Key Markets:</span>
+                            <div class="flex flex-wrap gap-2 mt-2">
+                                ${event.relevance && event.relevance.map(m => `<span class="inline-block bg-slate-100 rounded-full px-3 py-1 font-medium text-slate-700">${m}</span>`).join('')}
                             </div>
                         </div>
-                        <details class="text-sm">
-                            <summary class="px-5 py-3 bg-slate-50 cursor-pointer font-medium text-cyan-700 hover:bg-slate-100 transition rounded-b-xl list-none flex justify-between items-center">
-                                View Details
-                                <span class="transform transition-transform duration-300 details-arrow">▼</span>
-                            </summary>
-                            <div class="content">
-                                <div class="p-5 border-t border-slate-200">
-                                    <h4 class="font-semibold mb-2">Content Angles & Opportunities</h4>
-                                    <p class="text-slate-600 mb-4">${event.angles}</p>
-                                    <h4 class="font-semibold mb-2">Suggested Formats</h4>
-                                    <div class="flex flex-wrap gap-2">
-                                        ${event.formats && event.formats.map(f => `<span class="bg-cyan-100 text-cyan-800 px-2 py-1 rounded-md text-xs font-medium">${f}</span>`).join('')}
-                                    </div>
-                                </div>
-                            </div>
-                        </details>
                     `;
                     eventGrid.appendChild(card);
                 });
@@ -253,7 +228,6 @@
         }
 
         async function fetchAndProcessData() {
-            // Your new Google Sheet URL is now integrated.
             const googleSheetUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQpCWnqQXL4_fbE1eQhA0CR45qEpFqWayrJUHR6k3Ghb4lUnkjnIcTV3iKncLSyl2cySCM2vRPZAvz8/pub?output=csv';
 
             try {
@@ -312,23 +286,6 @@
                 renderEvents();
             }
         });
-        
-        eventGrid.addEventListener('click', function(e) {
-            const summary = e.target.closest('summary');
-            if (summary) {
-                const details = summary.parentElement;
-                const arrow = summary.querySelector('.details-arrow');
-                if (details.hasAttribute('open')) {
-                    e.preventDefault();
-                    arrow.style.transform = 'rotate(0deg)';
-                    const content = details.querySelector('.content');
-                    content.style.maxHeight = '0';
-                    setTimeout(() => { details.removeAttribute('open'); }, 500);
-                } else {
-                    arrow.style.transform = 'rotate(180deg)';
-                }
-            }
-        });
 
         document.addEventListener('DOMContentLoaded', () => {
             setupChart();
@@ -337,4 +294,5 @@
     </script>
 </body>
 </html>
+
 
