@@ -72,7 +72,7 @@
         </header>
 
         <section id="filters" class="p-4 bg-white rounded-xl shadow-sm mb-8 sticky top-4 z-10">
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div>
                     <label for="market-filter" class="block text-sm font-medium text-slate-700 mb-1">Filter by Market</label>
                     <select id="market-filter" class="w-full p-2 border border-slate-300 rounded-md shadow-sm focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition">
@@ -97,6 +97,15 @@
                     <label for="month-filter" class="block text-sm font-medium text-slate-700 mb-1">Filter by Month</label>
                     <select id="month-filter" class="w-full p-2 border border-slate-300 rounded-md shadow-sm focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition">
                         <option value="ALL">All Months</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="priority-filter" class="block text-sm font-medium text-slate-700 mb-1">Filter by Priority</label>
+                    <select id="priority-filter" class="w-full p-2 border border-slate-300 rounded-md shadow-sm focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition">
+                        <option value="ALL">All Priorities</option>
+                        <option value="High">High</option>
+                        <option value="Medium">Medium</option>
+                        <option value="Low">Low</option>
                     </select>
                 </div>
             </div>
@@ -153,7 +162,8 @@
         const state = {
             market: 'ALL',
             sport: 'ALL',
-            month: 'ALL'
+            month: 'ALL',
+            priority: 'ALL'
         };
 
         const countryFlags = {
@@ -170,6 +180,7 @@
         const marketFilter = document.getElementById('market-filter');
         const sportFilter = document.getElementById('sport-filter');
         const monthFilter = document.getElementById('month-filter');
+        const priorityFilter = document.getElementById('priority-filter');
         const totalEventsEl = document.getElementById('total-events');
         const eventModal = document.getElementById('event-modal');
         const eventModalContent = document.getElementById('event-modal-content');
@@ -177,13 +188,14 @@
         const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
         const monthFullNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
-        function getSignificanceClass(sig) {
+        function getPriorityClass(priority, type = 'bg') {
             const colors = {
-                High: 'bg-red-500',
-                Medium: 'bg-amber-500',
-                default: 'bg-cyan-500'
+                High: { bg: 'bg-red-500', text: 'text-red-800' },
+                Medium: { bg: 'bg-amber-500', text: 'text-amber-800' },
+                Low: { bg: 'bg-cyan-500', text: 'text-cyan-800' }
             };
-            return colors[sig] || colors.default;
+            const priorityColors = colors[priority] || colors.Low;
+            return priorityColors[type];
         }
         
         function createSportIcon(sport) {
@@ -210,13 +222,14 @@
             return eventData.filter(event => {
                 const marketMatch = state.market === 'ALL' || (event.relevance && event.relevance.includes(state.market)) || (event.relevance && event.relevance.includes('ALL'));
                 const sportMatch = state.sport === 'ALL' || event.sport === state.sport;
+                const priorityMatch = state.priority === 'ALL' || event.Priority === state.priority;
                 
                 const eventDates = event.parsedDates;
                 const monthMatch = state.month === 'ALL' || (eventDates && 
                     (eventDates.start.getMonth() <= parseInt(state.month) && eventDates.end.getMonth() >= parseInt(state.month))
                 );
 
-                return marketMatch && sportMatch && monthMatch;
+                return marketMatch && sportMatch && monthMatch && priorityMatch;
             });
         }
 
@@ -237,6 +250,10 @@
                         <p class="text-sm text-slate-600 mt-1">
                             <span class="font-semibold">Key Markets:</span> 
                             ${event.relevance.join(', ')}
+                        </p>
+                        <p class="text-sm text-slate-600 mt-1">
+                            <span class="font-semibold">Priority:</span> 
+                            <span class="font-medium ${getPriorityClass(event.Priority, 'text')}">${event.Priority || 'N/A'}</span>
                         </p>
                     `;
                     eventGrid.appendChild(card);
@@ -336,7 +353,7 @@
                     const widthPercent = (duration / daysInYear) * 100;
 
                     const barEl = document.createElement('div');
-                    barEl.className = `gantt-event-bar ${getSignificanceClass(event.significance)}`;
+                    barEl.className = `gantt-event-bar ${getPriorityClass(event.Priority, 'bg')}`;
                     barEl.style.left = `${leftPercent}%`;
                     barEl.style.width = `${widthPercent}%`;
                     barEl.style.top = `8px`;
@@ -371,7 +388,7 @@
         
         function parseCSV(text) {
             const rows = text.trim().replace(/\r/g, '').split('\n');
-            const headers = rows[0].split(',').map(h => h.trim());
+            const headers = rows[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
             const data = rows.slice(1).map(row => {
                 const values = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
                 let obj = {};
@@ -426,6 +443,10 @@
                         <span class="font-semibold">Key Markets:</span> 
                         ${event.relevance.join(', ')}
                     </p>
+                     <p class="text-base text-slate-600 mt-1">
+                        <span class="font-semibold">Priority:</span> 
+                        <span class="font-bold ${getPriorityClass(event.Priority, 'text')}">${event.Priority || 'N/A'}</span>
+                    </p>
                     <p class="text-base text-slate-600 mt-1">
                         <span class="font-semibold">Location:</span> 
                         ${event.location}
@@ -452,6 +473,7 @@
         marketFilter.addEventListener('change', (e) => { state.market = e.target.value; handleFilterChange(); });
         sportFilter.addEventListener('change', (e) => { state.sport = e.target.value; handleFilterChange(); });
         monthFilter.addEventListener('change', (e) => { state.month = e.target.value; handleFilterChange(); });
+        priorityFilter.addEventListener('change', (e) => { state.priority = e.target.value; handleFilterChange(); });
 
         const tooltip = document.getElementById('gantt-tooltip');
         document.getElementById('gantt-timeline').addEventListener('mouseover', e => {
@@ -487,7 +509,7 @@
         });
 
         eventModal.addEventListener('click', e => {
-            if (e.target.id === 'event-modal' || e.target.id === 'close-modal') {
+            if (e.target.id === 'event-modal' || e.target.closest('#close-modal')) {
                 hideEventModal();
             }
         });
@@ -498,6 +520,3 @@
     </script>
 </body>
 </html>
-
-
-
