@@ -109,6 +109,9 @@
                     </select>
                 </div>
             </div>
+            <div class="mt-4 text-right">
+                <button id="reset-filters-btn" class="text-sm font-medium text-cyan-600 hover:text-cyan-800 transition">Reset All Filters</button>
+            </div>
         </section>
 
         <section id="gantt-chart-view" class="bg-white p-6 rounded-xl shadow-sm overflow-hidden">
@@ -333,7 +336,7 @@
             sortedSports.forEach((sport, index) => {
                 const labelEl = document.createElement('div');
                 labelEl.className = 'h-10 flex items-center text-sm font-bold text-slate-700 pl-2 border-b border-slate-200';
-                labelEl.textContent = sport;
+                labelEl.innerHTML = `${createSportIcon(sport)} <span class="ml-2">${sport}</span>`;
                 ganttLabels.appendChild(labelEl);
 
                 const rowEl = document.createElement('div');
@@ -470,10 +473,25 @@
             renderGanttChart(filtered);
         }
 
+        function resetAllFilters() {
+            state.market = 'ALL';
+            state.sport = 'ALL';
+            state.month = 'ALL';
+            state.priority = 'ALL';
+
+            marketFilter.value = 'ALL';
+            sportFilter.value = 'ALL';
+            monthFilter.value = 'ALL';
+            priorityFilter.value = 'ALL';
+
+            handleFilterChange();
+        }
+
         marketFilter.addEventListener('change', (e) => { state.market = e.target.value; handleFilterChange(); });
         sportFilter.addEventListener('change', (e) => { state.sport = e.target.value; handleFilterChange(); });
         monthFilter.addEventListener('change', (e) => { state.month = e.target.value; handleFilterChange(); });
         priorityFilter.addEventListener('change', (e) => { state.priority = e.target.value; handleFilterChange(); });
+        document.getElementById('reset-filters-btn').addEventListener('click', resetAllFilters);
 
         const tooltip = document.getElementById('gantt-tooltip');
         document.getElementById('gantt-timeline').addEventListener('mouseover', e => {
