@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RSMG Interactive Content Calendar | Full Year 2025</title>
+    <title>RSMG Interactive Content Calendar</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -67,12 +67,18 @@
     <div class="container mx-auto p-4 md:p-8">
 
         <header class="text-center mb-8">
-            <h1 class="text-3xl md:text-4xl font-bold text-slate-900">RSMG Interactive Content Calendar</h1>
-            <p class="text-lg text-slate-600 mt-2">Full Year 2025</p>
+            <h1 id="main-title" class="text-3xl md:text-4xl font-bold text-slate-900">RSMG Interactive Content Calendar</h1>
         </header>
 
         <section id="filters" class="p-4 bg-white rounded-xl shadow-sm mb-8 sticky top-4 z-10">
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                <div>
+                    <label for="year-filter" class="block text-sm font-medium text-slate-700 mb-1">Filter by Year</label>
+                    <select id="year-filter" class="w-full p-2 border border-slate-300 rounded-md shadow-sm focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition">
+                        <option value="2025">2025</option>
+                        <option value="2026">2026</option>
+                    </select>
+                </div>
                 <div>
                     <label for="market-filter" class="block text-sm font-medium text-slate-700 mb-1">Filter by Market</label>
                     <select id="market-filter" class="w-full p-2 border border-slate-300 rounded-md shadow-sm focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition">
@@ -160,9 +166,9 @@
 
     <script>
         let eventData = [];
-        const YEAR = 2025;
 
         const state = {
+            year: 2025,
             market: 'ALL',
             sport: 'ALL',
             month: 'ALL',
@@ -180,6 +186,7 @@
         };
 
         const eventGrid = document.getElementById('event-grid');
+        const yearFilter = document.getElementById('year-filter');
         const marketFilter = document.getElementById('market-filter');
         const sportFilter = document.getElementById('sport-filter');
         const monthFilter = document.getElementById('month-filter');
@@ -223,6 +230,7 @@
         function getFilteredEvents() {
             if (!eventData) return [];
             return eventData.filter(event => {
+                const yearMatch = event.year == state.year;
                 const marketMatch = state.market === 'ALL' || (event.relevance && event.relevance.includes(state.market)) || (event.relevance && event.relevance.includes('ALL'));
                 const sportMatch = state.sport === 'ALL' || event.sport === state.sport;
                 const priorityMatch = state.priority === 'ALL' || event.Priority === state.priority;
@@ -232,7 +240,7 @@
                     (eventDates.start.getMonth() <= parseInt(state.month) && eventDates.end.getMonth() >= parseInt(state.month))
                 );
 
-                return marketMatch && sportMatch && monthMatch && priorityMatch;
+                return yearMatch && marketMatch && sportMatch && monthMatch && priorityMatch;
             });
         }
 
@@ -269,9 +277,8 @@
             return (Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) - Date.UTC(date.getFullYear(), 0, 0)) / 24 / 60 / 60 / 1000;
         }
 
-        function parseDateString(dateStr) {
+        function parseDateString(dateStr, year) {
             if (!dateStr || typeof dateStr !== 'string') return null;
-            const year = YEAR;
             const parts = dateStr.replace(/,/g, '').split(/[\s-]+/);
             
             const monthIndex = monthNames.findIndex(m => m.toLowerCase() === parts[0].toLowerCase());
@@ -317,9 +324,11 @@
             const rowHeight = 40;
             ganttTimeline.style.height = `${sortedSports.length * rowHeight}px`;
 
-            const daysInYear = 365;
+            const isLeap = new Date(state.year, 1, 29).getDate() === 29;
+            const daysInYear = isLeap ? 366 : 365;
+
             monthNames.forEach((name, index) => {
-                const daysInMonth = new Date(YEAR, index + 1, 0).getDate();
+                const daysInMonth = new Date(state.year, index + 1, 0).getDate();
                 const widthPercent = (daysInMonth / daysInYear) * 100;
                 ganttMonthHeader.innerHTML += `<div class="h-full flex-shrink-0 text-center text-xs font-semibold border-r border-b border-slate-200 flex items-center justify-center" style="width: ${widthPercent}%">${name}</div>`;
             });
@@ -327,7 +336,7 @@
             const verticalLines = document.createElement('div');
             verticalLines.className = 'absolute top-0 left-0 w-full h-full flex';
             monthNames.forEach((name, index) => {
-                const daysInMonth = new Date(YEAR, index + 1, 0).getDate();
+                const daysInMonth = new Date(state.year, index + 1, 0).getDate();
                 const widthPercent = (daysInMonth / daysInYear) * 100;
                 verticalLines.innerHTML += `<div class="h-full flex-shrink-0 border-r border-slate-200" style="width: ${widthPercent}%"></div>`;
             });
@@ -413,12 +422,16 @@
                 
                 const data = parseCSV(csvText);
 
-                eventData = data.map((item, index) => ({
-                    ...item,
-                    id: index,
-                    relevance: item.relevance ? item.relevance.split(';').map(s => s.trim()) : [],
-                    parsedDates: parseDateString(item.date)
-                }));
+                eventData = data.map((item, index) => {
+                    const year = parseInt(item.year, 10) || 2025; // Default to 2025 if year column is missing
+                    return {
+                        ...item,
+                        id: index,
+                        year: year,
+                        relevance: item.relevance ? item.relevance.split(';').map(s => s.trim()) : [],
+                        parsedDates: parseDateString(item.date, year)
+                    }
+                });
 
                 document.querySelector('.loader-container').style.display = 'none';
                 populateFilters();
@@ -428,7 +441,7 @@
                 console.error('Failed to fetch or process event data:', error);
                 eventGrid.innerHTML = `<div class="md:col-span-2 xl:col-span-3 text-center text-red-700 bg-red-100 border border-red-300 rounded-lg p-6">
                     <h3 class="font-bold text-lg">Failed to Load Event Data</h3>
-                    <p class="text-sm mt-2">There was a problem fetching data from the provided URL.</p>
+                    <p class="text-sm mt-2">There was a problem fetching data from the provided URL. Make sure you have added a 'year' column to your Google Sheet.</p>
                 </div>`;
             }
         }
@@ -468,17 +481,20 @@
         }
 
         function handleFilterChange() {
+            document.getElementById('main-title').textContent = `RSMG Interactive Content Calendar ${state.year}`;
             const filtered = getFilteredEvents();
             renderEventsList(filtered);
             renderGanttChart(filtered);
         }
 
         function resetAllFilters() {
+            state.year = 2025;
             state.market = 'ALL';
             state.sport = 'ALL';
             state.month = 'ALL';
             state.priority = 'ALL';
 
+            yearFilter.value = '2025';
             marketFilter.value = 'ALL';
             sportFilter.value = 'ALL';
             monthFilter.value = 'ALL';
@@ -487,6 +503,7 @@
             handleFilterChange();
         }
 
+        yearFilter.addEventListener('change', (e) => { state.year = parseInt(e.target.value, 10); handleFilterChange(); });
         marketFilter.addEventListener('change', (e) => { state.market = e.target.value; handleFilterChange(); });
         sportFilter.addEventListener('change', (e) => { state.sport = e.target.value; handleFilterChange(); });
         monthFilter.addEventListener('change', (e) => { state.month = e.target.value; handleFilterChange(); });
@@ -538,4 +555,3 @@
     </script>
 </body>
 </html>
-
