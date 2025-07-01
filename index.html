@@ -60,6 +60,30 @@
             pointer-events: none;
             white-space: nowrap;
         }
+        .today-marker-container {
+            position: absolute;
+            top: -24px;
+            transform: translateX(-50%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            z-index: 21;
+        }
+        .today-label {
+            background-color: #ef4444;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: bold;
+        }
+        .today-triangle {
+            width: 0;
+            height: 0;
+            border-left: 6px solid transparent;
+            border-right: 6px solid transparent;
+            border-top: 6px solid #ef4444;
+        }
     </style>
 </head>
 <body class="text-slate-800">
@@ -124,7 +148,7 @@
              <h2 class="text-2xl font-bold text-slate-900 mb-4">Yearly Event Timeline</h2>
              <div id="gantt-header" class="flex">
                 <div class="w-32 flex-shrink-0"></div> <!-- Spacer for labels -->
-                <div id="gantt-header-scroll" class="flex-grow overflow-x-hidden">
+                <div id="gantt-header-scroll" class="flex-grow overflow-x-hidden relative">
                     <div id="gantt-month-header" class="gantt-timeline-grid flex h-8"></div>
                 </div>
              </div>
@@ -166,9 +190,10 @@
 
     <script>
         let eventData = [];
+        const today = new Date();
 
         const state = {
-            year: 2025,
+            year: today.getFullYear(),
             market: 'ALL',
             sport: 'ALL',
             month: 'ALL',
@@ -287,37 +312,35 @@
             return (Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()) - Date.UTC(date.getUTCFullYear(), 0, 0)) / 86400000;
         }
 
-        function parseDateString(dateStr, year) {
+        function parseDateString(dateStr, eventYear) {
             if (!dateStr || typeof dateStr !== 'string') return null;
-            const parts = dateStr.replace(/,/g, '').split(/[\s-]+/);
-            
-            const month1Index = monthNames.findIndex(m => m.toLowerCase() === parts[0].toLowerCase());
-            if (month1Index === -1) return null;
 
-            const day1 = parseInt(parts[1], 10);
-            if (isNaN(day1)) return null;
-            
-            let start = new Date(Date.UTC(year, month1Index, day1));
-            let end = new Date(Date.UTC(year, month1Index, day1));
-            let endYear = year;
+            const regex = /^(\w{3})\s+(\d{1,2})(?:\s+-\s+(?:(\w{3})\s+)?(\d{1,2}))?$/;
+            const match = dateStr.match(regex);
+            if (!match) return null;
 
-            if (parts.length > 2) {
-                let month2Index, day2;
-                if (isNaN(parseInt(parts[2], 10))) {
-                    month2Index = monthNames.findIndex(m => m.toLowerCase() === parts[2].toLowerCase());
-                    day2 = parseInt(parts[3], 10);
-                } else {
-                    month2Index = month1Index;
-                    day2 = parseInt(parts[2], 10);
-                }
-                if (month2Index < month1Index) {
+            const [, startMonthStr, startDayStr, endMonthStr, endDayStr] = match;
+            
+            const startMonthIndex = monthNames.findIndex(m => m.toLowerCase() === startMonthStr.toLowerCase());
+            if (startMonthIndex === -1) return null;
+            
+            const startDay = parseInt(startDayStr, 10);
+            const start = new Date(Date.UTC(eventYear, startMonthIndex, startDay));
+
+            if (endDayStr) {
+                let endMonthIndex = endMonthStr ? monthNames.findIndex(m => m.toLowerCase() === endMonthStr.toLowerCase()) : startMonthIndex;
+                if (endMonthIndex === -1) return null;
+                
+                const endDay = parseInt(endDayStr, 10);
+                let endYear = eventYear;
+                if (endMonthIndex < startMonthIndex) {
                     endYear++;
                 }
-                if (month2Index !== -1 && !isNaN(day2)) {
-                    end = new Date(Date.UTC(endYear, month2Index, day2));
-                }
+                const end = new Date(Date.UTC(endYear, endMonthIndex, endDay));
+                return { start, end };
             }
-            return { start, end };
+            
+            return { start, end: start };
         }
 
         function renderGanttChart(filteredEvents) {
@@ -394,6 +417,21 @@
                 });
                 ganttTimeline.appendChild(rowEl);
             });
+
+            // Add today marker
+            if (state.year === today.getFullYear()) {
+                const todayDay = dayOfYear(today);
+                const todayLeftPercent = ((todayDay - 1) / daysInYear) * 100;
+                
+                const todayMarker = document.createElement('div');
+                todayMarker.className = 'today-marker-container';
+                todayMarker.style.left = `${todayLeftPercent}%`;
+                todayMarker.innerHTML = `
+                    <div class="today-label">Today</div>
+                    <div class="today-triangle"></div>
+                `;
+                ganttMonthHeader.appendChild(todayMarker);
+            }
         }
         
         function populateFilters() {
@@ -440,17 +478,17 @@
                 const data = parseCSV(csvText);
 
                 eventData = data.map((item, index) => {
-                    const year = parseInt(item.year, 10) || 2025;
+                    const year = parseInt(item.year, 10) || today.getFullYear();
                     return {
                         ...item,
                         id: index,
-                        year: year,
                         relevance: item.relevance ? item.relevance.split(';').map(s => s.trim()) : [],
                         parsedDates: parseDateString(item.date, year)
                     }
                 });
 
                 document.querySelector('.loader-container').style.display = 'none';
+                yearFilter.value = state.year;
                 populateFilters();
                 handleFilterChange();
 
@@ -505,13 +543,13 @@
         }
 
         function resetAllFilters() {
-            state.year = 2025;
+            state.year = today.getFullYear();
             state.market = 'ALL';
             state.sport = 'ALL';
             state.month = 'ALL';
             state.priority = 'ALL';
 
-            yearFilter.value = '2025';
+            yearFilter.value = state.year;
             marketFilter.value = 'ALL';
             sportFilter.value = 'ALL';
             monthFilter.value = 'ALL';
