@@ -3,14 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RSMG Interactive Content Calendar | August 2025</title>
+    <title>RSMG Interactive Content Calendar | Full Year 2025</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <!-- Chosen Palette: Warm Neutral Harmony -->
-    <!-- Application Structure Plan: The SPA is designed as an interactive dashboard. The top-level consists of a filter control panel for immediate user interaction, followed by a data visualization section (a dynamic chart and key stats) for a high-level overview. The main content area is a responsive grid of event cards. This structure was chosen to transform the static table into a functional tool. It allows users to fluidly move from a broad overview (the chart) to specific, filtered information (the event cards) and finally to granular details (expanding a card). This flow directly supports a content planner's workflow: see the big picture, find relevant events, then access the specific strategy. -->
-    <!-- Visualization & Content Choices: The calendar data from the report is transformed into several interactive components. Goal: Organize/Filter -> Presentation: A filter bar with dropdowns and buttons -> Interaction: Users select a market, significance, or sport to instantly update the view -> Justification: This is the core function, allowing users to personalize the data. Goal: Compare -> Presentation: A dynamic Doughnut Chart (Chart.js/Canvas) showing the distribution of events by sport -> Interaction: The chart redraws with every filter change, providing immediate visual feedback on the composition of the selected events -> Justification: It provides a quick, visual summary that's easier to digest than a list. Goal: Inform/Explore -> Presentation: Event Cards in a responsive grid -> Interaction: Clicking a card expands to show detailed content angles -> Justification: This keeps the main interface clean while providing deep information on demand. -->
-    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -39,6 +35,19 @@
         details[open] .content {
             max-height: 1000px; /* Large enough to not clip content */
         }
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #06b6d4;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body class="text-slate-800">
@@ -47,7 +56,7 @@
 
         <header class="text-center mb-8">
             <h1 class="text-3xl md:text-4xl font-bold text-slate-900">RSMG Interactive Content Calendar</h1>
-            <p class="text-lg text-slate-600 mt-2">August 2025</p>
+            <p class="text-lg text-slate-600 mt-2">Full Year 2025</p>
         </header>
 
         <section id="filters" class="p-4 bg-white rounded-xl shadow-sm mb-8 sticky top-4 z-10">
@@ -110,21 +119,15 @@
         </section>
         
         <main id="event-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-            
+            <div class="loader-container col-span-full">
+                <div class="loader"></div>
+                <p class="text-center text-slate-500">Fetching latest events...</p>
+            </div>
         </main>
     </div>
 
     <script>
-        const eventData = [
-            { date: "Aug 8-10", name: "Premier League Opening Weekend", sport: "Football", location: "England", significance: "High", relevance: ["ALL", "PT", "PL"], angles: "Pre: Season predictions, fantasy league tips. Live: Live blogs, goal clips on social. Post: Match analysis, 'Team of the Week' featuring local heroes.", formats: ["Article", "Video", "Social", "Podcast"] },
-            { date: "Aug 12", name: "UEFA Super Cup", sport: "Football", location: "TBD", significance: "High", relevance: ["ALL"], angles: "Deep-dive tactical preview. Historical look back at the fixture. Player-to-watch profiles. Post-match '5 Things We Learned.'", formats: ["Video", "Article", "Interactive"] },
-            { date: "Mid-Aug", name: "Start of Domestic Leagues", sport: "Football", location: "Europe", significance: "Medium", relevance: ["RO", "BG", "HU", "SK", "RS", "PL", "PT", "CH"], angles: "Team-by-team season guides. Fan expectation interviews. 'Derby Day' countdowns. Transfer window analysis for each league.", formats: ["Article", "Photo Gallery", "Social Media Polls"] },
-            { date: "Aug 19 - Sep 7", name: "La Vuelta a España", sport: "Cycling", location: "Spain", significance: "Medium", relevance: ["PT", "CH"], angles: "Stage-by-stage analysis. 'Hero of the Day' profiles. Interactive map of the route. Highlight the grueling nature of a Grand Tour.", formats: ["Interactive", "Video", "Article"] },
-            { date: "Aug 23", name: "Diamond League: Silesia", sport: "Athletics", location: "Chorzów, Poland", significance: "Medium", relevance: ["PL"], angles: "Host Focus: Venue guides, interviews with Polish athletes. Global: 'Clash of the Titans' narrative for big head-to-head races. Explainer on what it takes to win.", formats: ["Video", "Social", "Article"] },
-            { date: "Aug 25 - Sep 7", name: "US Open", sport: "Tennis", location: "New York, USA", significance: "High", relevance: ["RS", "PL", "CH"], angles: "'Path to the Final' bracket challenge. Daily wrap-up show/podcast. Focus on human-interest stories of underdog players. Fashion and celebrity-spotting at the event.", formats: ["Podcast", "Video", "Article", "Social"] },
-            { date: "Aug 29-31", name: "Formula 1 - Dutch Grand Prix", sport: "Motorsport", location: "Zandvoort, NL", significance: "High", relevance: ["ALL"], angles: "Technical analysis of the track. Fan zone experience features. Data-driven race predictions. Live race commentary and driver radio highlights.", formats: ["Data Viz", "Video", "Live Blog"] },
-            { date: "TBD", name: "FIBA World Cup Qualifiers", sport: "Basketball", location: "Various", significance: "Medium", relevance: ["RS", "PT", "GR"], angles: "National team roster breakdowns. 'Key to Victory' analysis for crucial games. Post-game player interviews and press conference summaries.", formats: ["Article", "Social", "Video"] }
-        ];
+        let eventData = [];
 
         const state = {
             market: 'ALL',
@@ -151,26 +154,24 @@
         
         function createSportIcon(sport) {
             const icons = {
-                'Football': '\u26BD\uFE0F',
-                'Cycling': '\uD83D\uDEB4',
-                'Athletics': '\uD83C\uDFC3',
-                'Tennis': '\uD83C\uDFBE',
-                'Motorsport': '\uD83C\uDFCE\uFE0F',
-                'Basketball': '\uD83C\uDFC0'
+                'Football': '\u26BD\uFE0F', 'Cycling': '\uD83D\uDEB4', 'Athletics': '\uD83C\uDFC3',
+                'Tennis': '\uD83C\uDFBE', 'Motorsport': '\uD83C\uDFCE\uFE0F', 'Basketball': '\uD83C\uDFC0',
+                'Golf': '🏌️‍♂️', 'Handball': '🤾', 'Skiing': '⛷️'
             };
             return icons[sport] || '\uD83C\uDFC5';
         }
 
         function renderEvents() {
+            if (!eventData) return;
             const filteredEvents = eventData.filter(event => {
-                const marketMatch = state.market === 'ALL' || event.relevance.includes(state.market) || event.relevance.includes('ALL');
+                const marketMatch = state.market === 'ALL' || (event.relevance && event.relevance.includes(state.market)) || (event.relevance && event.relevance.includes('ALL'));
                 const sportMatch = state.sport === 'ALL' || event.sport === state.sport;
                 const significanceMatch = state.significance === 'ALL' || event.significance === state.significance;
                 return marketMatch && sportMatch && significanceMatch;
             });
 
             eventGrid.innerHTML = '';
-            if (filteredEvents.length === 0) {
+            if (filteredEvents.length === 0 && eventData.length > 0) {
                 eventGrid.innerHTML = `<p class="md:col-span-2 xl:col-span-3 text-center text-slate-500 py-10">No events match the current filters.</p>`;
             } else {
                 filteredEvents.forEach(event => {
@@ -186,7 +187,7 @@
                             <p class="text-sm text-slate-600 mt-1">📍 ${event.location}</p>
                             <div class="mt-3 text-xs">
                                 <span class="font-semibold">Markets:</span>
-                                ${event.relevance.map(m => `<span class="inline-block bg-slate-100 rounded-full px-2 py-1 font-medium text-slate-700 mr-1 mb-1">${m}</span>`).join('')}
+                                ${event.relevance && event.relevance.map(m => `<span class="inline-block bg-slate-100 rounded-full px-2 py-1 font-medium text-slate-700 mr-1 mb-1">${m}</span>`).join('')}
                             </div>
                         </div>
                         <details class="text-sm">
@@ -200,7 +201,7 @@
                                     <p class="text-slate-600 mb-4">${event.angles}</p>
                                     <h4 class="font-semibold mb-2">Suggested Formats</h4>
                                     <div class="flex flex-wrap gap-2">
-                                        ${event.formats.map(f => `<span class="bg-cyan-100 text-cyan-800 px-2 py-1 rounded-md text-xs font-medium">${f}</span>`).join('')}
+                                        ${event.formats && event.formats.map(f => `<span class="bg-cyan-100 text-cyan-800 px-2 py-1 rounded-md text-xs font-medium">${f}</span>`).join('')}
                                     </div>
                                 </div>
                             </div>
@@ -216,6 +217,10 @@
         }
         
         function populateSportFilter() {
+            while (sportFilter.options.length > 1) {
+                sportFilter.remove(1);
+            }
+            if (!eventData) return;
             const sports = [...new Set(eventData.map(e => e.sport))];
             sports.sort();
             sports.forEach(sport => {
@@ -230,76 +235,74 @@
             const ctx = document.getElementById('sports-chart').getContext('2d');
             sportsChart = new Chart(ctx, {
                 type: 'doughnut',
-                data: {
-                    labels: [],
-                    datasets: [{
-                        label: 'Events by Sport',
-                        data: [],
-                        backgroundColor: [
-                            '#06b6d4', '#67e8f9', '#a5f3fc', '#cffafe',
-                            '#0891b2', '#22d3ee', '#67e8f9', '#a5f3fc'
-                        ],
-                        borderColor: '#f8fafc',
-                        borderWidth: 4
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'bottom',
-                            labels: {
-                                font: { size: 12 }
-                            }
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    let label = context.label || '';
-                                    if (label) {
-                                        label += ': ';
-                                    }
-                                    if (context.parsed !== null) {
-                                        label += context.parsed;
-                                    }
-                                    return label;
-                                }
-                            }
-                        }
-                    }
-                }
+                data: { labels: [], datasets: [{ label: 'Events by Sport', data: [], backgroundColor: ['#06b6d4', '#0891b2', '#0e7490', '#164e63', '#67e8f9', '#22d3ee', '#a5f3fc', '#cffafe', '#155e75', '#0284c7', '#0369a1', '#075985'], borderColor: '#f8fafc', borderWidth: 4 }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { padding: 20, font: { size: 12 } } }, tooltip: { callbacks: { label: function(context) { let label = context.label || ''; if (label) { label += ': '; } if (context.parsed !== null) { label += context.parsed; } return label; } } } } }
             });
         }
         
         function updateChart(filteredEvents) {
+            if (!sportsChart || !filteredEvents) return;
             const sportCounts = filteredEvents.reduce((acc, event) => {
                 acc[event.sport] = (acc[event.sport] || 0) + 1;
                 return acc;
             }, {});
 
-            const labels = Object.keys(sportCounts);
-            const data = Object.values(sportCounts);
-
-            sportsChart.data.labels = labels;
-            sportsChart.data.datasets[0].data = data;
+            sportsChart.data.labels = Object.keys(sportCounts);
+            sportsChart.data.datasets[0].data = Object.values(sportCounts);
             sportsChart.update();
         }
 
-        marketFilter.addEventListener('change', (e) => {
-            state.market = e.target.value;
-            renderEvents();
-        });
+        async function fetchAndProcessData() {
+            // Your new Google Sheet URL is now integrated.
+            const googleSheetUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQpCWnqQXL4_fbE1eQhA0CR45qEpFqWayrJUHR6k3Ghb4lUnkjnIcTV3iKncLSyl2cySCM2vRPZAvz8/pub?output=csv';
 
-        sportFilter.addEventListener('change', (e) => {
-            state.sport = e.target.value;
-            renderEvents();
-        });
+            try {
+                const response = await fetch(googleSheetUrl);
+                if (!response.ok) {
+                    throw new Error(`Network response was not ok: ${response.statusText}`);
+                }
+                const csvText = await response.text();
+                
+                const rows = csvText.trim().split('\n');
+                const headers = rows[0].split(',').map(h => h.trim());
+                const data = rows.slice(1).map(row => {
+                    const values = row.split(',').map(v => v.trim().replace(/"/g, ''));
+                    let obj = {};
+                    headers.forEach((header, index) => {
+                        obj[header] = values[index];
+                    });
+                    return obj;
+                });
 
+                eventData = data.map(item => ({
+                    ...item,
+                    relevance: item.relevance ? item.relevance.split(';').map(s => s.trim()) : [],
+                    formats: item.formats ? item.formats.split(';').map(s => s.trim()) : []
+                }));
+
+                document.querySelector('.loader-container').style.display = 'none';
+                populateSportFilter();
+                renderEvents();
+
+            } catch (error) {
+                console.error('Failed to fetch or process event data:', error);
+                eventGrid.innerHTML = `<div class="md:col-span-2 xl:col-span-3 text-center text-red-700 bg-red-100 border border-red-300 rounded-lg p-6">
+                    <h3 class="font-bold text-lg">Failed to Load Event Data</h3>
+                    <p class="text-sm mt-2">There was a problem fetching data from the provided URL. Please check the following:</p>
+                    <ul class="text-left text-sm mt-4 list-disc list-inside space-y-1">
+                        <li>The Google Sheet URL is correct.</li>
+                        <li>The sheet is correctly "Published to web" as a CSV.</li>
+                        <li>There are no network or CORS issues preventing access.</li>
+                    </ul>
+                </div>`;
+            }
+        }
+
+        marketFilter.addEventListener('change', (e) => { state.market = e.target.value; renderEvents(); });
+        sportFilter.addEventListener('change', (e) => { state.sport = e.target.value; renderEvents(); });
         significanceFilter.addEventListener('click', (e) => {
             if (e.target.tagName === 'BUTTON') {
                 state.significance = e.target.dataset.sig;
-                // Update active button style
                 significanceFilter.querySelectorAll('button').forEach(btn => {
                     btn.classList.remove('bg-cyan-600', 'text-white');
                     btn.classList.add('bg-white', 'hover:bg-slate-100');
@@ -310,31 +313,28 @@
             }
         });
         
-        // Event delegation for details/summary toggle animation
         eventGrid.addEventListener('click', function(e) {
             const summary = e.target.closest('summary');
             if (summary) {
                 const details = summary.parentElement;
                 const arrow = summary.querySelector('.details-arrow');
                 if (details.hasAttribute('open')) {
-                    // It's about to close
                     e.preventDefault();
                     arrow.style.transform = 'rotate(0deg)';
                     const content = details.querySelector('.content');
                     content.style.maxHeight = '0';
                     setTimeout(() => { details.removeAttribute('open'); }, 500);
                 } else {
-                    // It's about to open
                     arrow.style.transform = 'rotate(180deg)';
                 }
             }
         });
 
         document.addEventListener('DOMContentLoaded', () => {
-            populateSportFilter();
             setupChart();
-            renderEvents();
+            fetchAndProcessData();
         });
     </script>
 </body>
 </html>
+
