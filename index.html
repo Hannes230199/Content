@@ -12,20 +12,6 @@
             font-family: 'Inter', sans-serif;
             background-color: #f8fafc; /* slate-50 */
         }
-        .chart-container {
-            position: relative;
-            width: 100%;
-            max-width: 400px;
-            margin-left: auto;
-            margin-right: auto;
-            height: 350px;
-            max-height: 400px;
-        }
-        @media (min-width: 768px) {
-            .chart-container {
-                height: 400px;
-            }
-        }
         .loader {
             border: 4px solid #f3f3f3;
             border-top: 4px solid #06b6d4;
@@ -38,6 +24,41 @@
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
+        }
+        /* Gantt Chart Styles */
+        .gantt-timeline-grid {
+            min-width: 1200px;
+        }
+        .gantt-event-bar {
+            position: absolute;
+            height: 24px;
+            border-radius: 4px;
+            color: white;
+            font-size: 12px;
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            padding: 4px 8px;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .gantt-event-bar:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            z-index: 10;
+        }
+        .gantt-tooltip {
+            position: fixed; /* Use fixed for positioning relative to viewport */
+            display: none;
+            background-color: #1f2937; /* gray-800 */
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            z-index: 50;
+            pointer-events: none;
+            white-space: nowrap;
         }
     </style>
 </head>
@@ -73,74 +94,96 @@
                     </select>
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1">Filter by Significance</label>
-                    <div id="significance-filter" class="flex space-x-2">
-                        <button data-sig="ALL" class="flex-1 p-2 border rounded-md transition text-white bg-cyan-600">All</button>
-                        <button data-sig="High" class="flex-1 p-2 border rounded-md transition bg-white hover:bg-slate-100">High</button>
-                        <button data-sig="Medium" class="flex-1 p-2 border rounded-md transition bg-white hover:bg-slate-100">Medium</button>
-                    </div>
+                    <label for="month-filter" class="block text-sm font-medium text-slate-700 mb-1">Filter by Month</label>
+                    <select id="month-filter" class="w-full p-2 border border-slate-300 rounded-md shadow-sm focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition">
+                        <option value="ALL">All Months</option>
+                    </select>
                 </div>
             </div>
         </section>
 
-        <section id="dashboard" class="mb-8 grid grid-cols-1 lg:grid-cols-3 gap-8 items-center">
-            <div class="lg:col-span-1 bg-white p-6 rounded-xl shadow-sm">
-                 <h2 class="text-xl font-bold text-center text-slate-900 mb-4">Event Distribution by Sport</h2>
-                 <p class="text-center text-sm text-slate-500 mb-4">This chart dynamically updates based on your filters to show the mix of sports for the selected criteria.</p>
-                <div class="chart-container">
-                    <canvas id="sports-chart"></canvas>
+        <section id="gantt-chart-view" class="bg-white p-6 rounded-xl shadow-sm overflow-hidden">
+             <h2 class="text-2xl font-bold text-slate-900 mb-4">Yearly Event Timeline</h2>
+             <div id="gantt-header" class="flex">
+                <div class="w-32 flex-shrink-0"></div> <!-- Spacer for labels -->
+                <div id="gantt-header-scroll" class="flex-grow overflow-x-hidden">
+                    <div id="gantt-month-header" class="gantt-timeline-grid flex h-8"></div>
                 </div>
-            </div>
-            <div class="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-6">
-                <div class="p-6 bg-white rounded-xl shadow-sm">
-                    <h3 class="font-bold text-slate-900 text-lg">Filtered Events</h3>
-                    <p id="total-events" class="text-4xl font-extrabold text-cyan-600 mt-2">0</p>
-                    <p class="text-slate-500 mt-1">Total events matching your criteria.</p>
-                </div>
-                 <div class="p-6 bg-white rounded-xl shadow-sm">
-                    <h3 class="font-bold text-slate-900 text-lg">High-Significance Events</h3>
-                    <p id="high-sig-events" class="text-4xl font-extrabold text-cyan-600 mt-2">0</p>
-                    <p class="text-slate-500 mt-1">Major global and market-specific events.</p>
-                </div>
-                 <div class="p-6 bg-cyan-50 border border-cyan-200 rounded-xl shadow-sm col-span-1 sm:col-span-2">
-                    <h3 class="font-bold text-slate-900 text-lg">About this Calendar</h3>
-                    <p class="text-slate-600 mt-2 text-sm">This interactive tool translates our static content calendar into a dynamic planning resource. Use the filters above to isolate events by market, sport, or importance. This helps us deliver the best experience to sports fans everywhere.</p>
-                </div>
-            </div>
+             </div>
+             <div id="gantt-body" class="overflow-y-auto" style="max-height: 400px;">
+                 <div id="gantt-container" class="flex">
+                    <div id="gantt-labels" class="w-32 flex-shrink-0"></div>
+                    <div id="gantt-timeline-wrapper" class="flex-grow overflow-x-auto">
+                        <div id="gantt-timeline" class="gantt-timeline-grid relative"></div>
+                    </div>
+                 </div>
+             </div>
         </section>
         
-        <main id="event-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-            <div class="loader-container col-span-full">
-                <div class="loader"></div>
-                <p class="text-center text-slate-500">Fetching latest events...</p>
+        <section id="event-list-section" class="mt-8">
+             <div class="flex justify-between items-center mb-4">
+                <h2 class="text-2xl font-bold text-slate-900">Events List</h2>
+                <div class="text-right">
+                    <p id="total-events" class="text-lg font-bold text-cyan-600">0 events</p>
+                    <p class="text-sm text-slate-500">matching criteria</p>
+                </div>
             </div>
-        </main>
+            <main id="event-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                <div class="loader-container col-span-full">
+                    <div class="loader"></div>
+                    <p class="text-center text-slate-500">Fetching latest events...</p>
+                </div>
+            </main>
+        </section>
     </div>
+    <div id="gantt-tooltip" class="gantt-tooltip"></div>
+
+    <!-- Event Modal -->
+    <div id="event-modal" class="fixed inset-0 bg-black bg-opacity-60 hidden items-center justify-center z-40 p-4">
+        <div id="event-modal-content" class="bg-white rounded-xl shadow-2xl w-full max-w-md relative">
+            <!-- Content will be injected here -->
+        </div>
+    </div>
+
 
     <script>
         let eventData = [];
+        const YEAR = 2025;
 
         const state = {
             market: 'ALL',
             sport: 'ALL',
-            significance: 'ALL'
+            month: 'ALL'
+        };
+
+        const countryFlags = {
+            'Australia': '🇦🇺', 'China': '🇨🇳', 'Japan': '🇯🇵', 'Bahrain': '🇧🇭', 
+            'Saudi Arabia': '🇸🇦', 'USA': '🇺🇸', 'Italy': '🇮🇹', 'Monaco': '🇲🇨', 
+            'France': '🇫🇷', 'Spain': '🇪🇸', 'Germany': '🇩🇪', 'Canada': '🇨🇦', 
+            'Austria': '🇦🇹', 'UK': '🇬🇧', 'Northern Ireland': '🇬🇧', 'Belgium': '🇧🇪', 
+            'Hungary': '🇭🇺', 'NL': '🇳🇱', 'Azerbaijan': '🇦🇿', 'Singapore': '🇸🇬', 
+            'Mexico': '🇲🇽', 'Brazil': '🇧🇷', 'Qatar': '🇶🇦', 'Abu Dhabi': '🇦🇪',
+            'CRO': '🇭🇷', 'DEN': '🇩🇰', 'NOR': '🇳🇴'
         };
 
         const eventGrid = document.getElementById('event-grid');
         const marketFilter = document.getElementById('market-filter');
         const sportFilter = document.getElementById('sport-filter');
-        const significanceFilter = document.getElementById('significance-filter');
+        const monthFilter = document.getElementById('month-filter');
         const totalEventsEl = document.getElementById('total-events');
-        const highSigEventsEl = document.getElementById('high-sig-events');
+        const eventModal = document.getElementById('event-modal');
+        const eventModalContent = document.getElementById('event-modal-content');
         
-        let sportsChart;
+        const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        const monthFullNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
         function getSignificanceClass(sig) {
-            switch (sig) {
-                case 'High': return 'bg-red-100 text-red-800';
-                case 'Medium': return 'bg-amber-100 text-amber-800';
-                default: return 'bg-slate-100 text-slate-800';
-            }
+            const colors = {
+                High: 'bg-red-500',
+                Medium: 'bg-amber-500',
+                default: 'bg-cyan-500'
+            };
+            return colors[sig] || colors.default;
         }
         
         function createSportIcon(sport) {
@@ -152,79 +195,192 @@
             return icons[sport] || '\uD83C\uDFC5';
         }
 
-        function renderEvents() {
-            if (!eventData) return;
-            const filteredEvents = eventData.filter(event => {
+        function getFlagForLocation(locationStr) {
+            if (!locationStr) return '🌍';
+            if (locationStr.includes('/')) {
+                return locationStr.split('/').map(code => countryFlags[code.trim()] || '').join(' ');
+            }
+            const parts = locationStr.split(',');
+            const countryPart = parts[parts.length - 1].trim();
+            return countryFlags[countryPart] || '🌍';
+        }
+
+        function getFilteredEvents() {
+            if (!eventData) return [];
+            return eventData.filter(event => {
                 const marketMatch = state.market === 'ALL' || (event.relevance && event.relevance.includes(state.market)) || (event.relevance && event.relevance.includes('ALL'));
                 const sportMatch = state.sport === 'ALL' || event.sport === state.sport;
-                const significanceMatch = state.significance === 'ALL' || event.significance === state.significance;
-                return marketMatch && sportMatch && significanceMatch;
-            });
+                
+                const eventDates = event.parsedDates;
+                const monthMatch = state.month === 'ALL' || (eventDates && 
+                    (eventDates.start.getMonth() <= parseInt(state.month) && eventDates.end.getMonth() >= parseInt(state.month))
+                );
 
+                return marketMatch && sportMatch && monthMatch;
+            });
+        }
+
+        function renderEventsList(eventsToList) {
             eventGrid.innerHTML = '';
-            if (filteredEvents.length === 0 && eventData.length > 0) {
-                eventGrid.innerHTML = `<p class="md:col-span-2 xl:col-span-3 text-center text-slate-500 py-10">No events match the current filters.</p>`;
+            if (eventsToList.length === 0) {
+                eventGrid.innerHTML = `<p class="md:col-span-2 xl:col-span-3 text-center text-slate-500 py-10">No events found.</p>`;
             } else {
-                filteredEvents.forEach(event => {
+                eventsToList.forEach(event => {
                     const card = document.createElement('div');
                     card.className = 'bg-white rounded-xl shadow-sm transition hover:shadow-lg p-5';
                     card.innerHTML = `
                         <div class="flex justify-between items-start">
                             <p class="text-xs text-slate-500">${event.date}</p>
-                            <span class="${getSignificanceClass(event.significance)} text-xs font-semibold mr-2 px-2.5 py-0.5 rounded-full">${event.significance}</span>
+                            <span class="text-xl">${getFlagForLocation(event.location)}</span>
                         </div>
                         <h3 class="font-bold text-lg mt-2 text-slate-900">${createSportIcon(event.sport)} ${event.name}</h3>
-                        <p class="text-sm text-slate-600 mt-1">📍 ${event.location}</p>
-                        <div class="mt-4 pt-4 border-t border-slate-200 text-xs">
-                            <span class="font-semibold text-slate-700">Key Markets:</span>
-                            <div class="flex flex-wrap gap-2 mt-2">
-                                ${event.relevance && event.relevance.map(m => `<span class="inline-block bg-slate-100 rounded-full px-3 py-1 font-medium text-slate-700">${m}</span>`).join('')}
-                            </div>
-                        </div>
+                        <p class="text-sm text-slate-600 mt-1">
+                            <span class="font-semibold">Key Markets:</span> 
+                            ${event.relevance.join(', ')}
+                        </p>
                     `;
                     eventGrid.appendChild(card);
                 });
             }
-
-            totalEventsEl.textContent = filteredEvents.length;
-            highSigEventsEl.textContent = filteredEvents.filter(e => e.significance === 'High').length;
-            updateChart(filteredEvents);
+            totalEventsEl.textContent = `${eventsToList.length} event${eventsToList.length !== 1 ? 's' : ''}`;
         }
         
-        function populateSportFilter() {
-            while (sportFilter.options.length > 1) {
-                sportFilter.remove(1);
+        function dayOfYear(date) {
+            return (Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) - Date.UTC(date.getFullYear(), 0, 0)) / 24 / 60 / 60 / 1000;
+        }
+
+        function parseDateString(dateStr) {
+            if (!dateStr || typeof dateStr !== 'string') return null;
+            const year = YEAR;
+            const parts = dateStr.replace(/,/g, '').split(/[\s-]+/);
+            
+            const monthIndex = monthNames.findIndex(m => m.toLowerCase() === parts[0].toLowerCase());
+            if (monthIndex === -1) return null;
+
+            const day1 = parseInt(parts[1], 10);
+            if (isNaN(day1)) return null;
+            
+            let start = new Date(year, monthIndex, day1);
+            let end = new Date(year, monthIndex, day1);
+
+            if (parts.length > 2) {
+                let month2Index, day2;
+                if (isNaN(parseInt(parts[2], 10))) {
+                    month2Index = monthNames.findIndex(m => m.toLowerCase() === parts[2].toLowerCase());
+                    day2 = parseInt(parts[3], 10);
+                } else {
+                    month2Index = monthIndex;
+                    day2 = parseInt(parts[2], 10);
+                }
+                if (month2Index !== -1 && !isNaN(day2)) {
+                    end = new Date(year, month2Index, day2);
+                }
             }
+            return { start, end };
+        }
+
+        function renderGanttChart(filteredEvents) {
+            const ganttLabels = document.getElementById('gantt-labels');
+            const ganttTimeline = document.getElementById('gantt-timeline');
+            const ganttMonthHeader = document.getElementById('gantt-month-header');
+            ganttLabels.innerHTML = '';
+            ganttTimeline.innerHTML = '';
+            ganttMonthHeader.innerHTML = '';
+
+            const eventsBySport = filteredEvents.reduce((acc, event) => {
+                if (!acc[event.sport]) acc[event.sport] = [];
+                acc[event.sport].push(event);
+                return acc;
+            }, {});
+
+            const sortedSports = Object.keys(eventsBySport).sort();
+            const rowHeight = 40;
+            ganttTimeline.style.height = `${sortedSports.length * rowHeight}px`;
+
+            const daysInYear = 365;
+            monthNames.forEach((name, index) => {
+                const daysInMonth = new Date(YEAR, index + 1, 0).getDate();
+                const widthPercent = (daysInMonth / daysInYear) * 100;
+                ganttMonthHeader.innerHTML += `<div class="h-full flex-shrink-0 text-center text-xs font-semibold border-r border-b border-slate-200 flex items-center justify-center" style="width: ${widthPercent}%">${name}</div>`;
+            });
+            
+            const verticalLines = document.createElement('div');
+            verticalLines.className = 'absolute top-0 left-0 w-full h-full flex';
+            monthNames.forEach((name, index) => {
+                const daysInMonth = new Date(YEAR, index + 1, 0).getDate();
+                const widthPercent = (daysInMonth / daysInYear) * 100;
+                verticalLines.innerHTML += `<div class="h-full flex-shrink-0 border-r border-slate-200" style="width: ${widthPercent}%"></div>`;
+            });
+            ganttTimeline.appendChild(verticalLines);
+
+            sortedSports.forEach((sport, index) => {
+                const labelEl = document.createElement('div');
+                labelEl.className = 'h-10 flex items-center text-sm font-bold text-slate-700 pl-2 border-b border-slate-200';
+                labelEl.textContent = sport;
+                ganttLabels.appendChild(labelEl);
+
+                const rowEl = document.createElement('div');
+                rowEl.className = 'absolute w-full border-b border-slate-200';
+                rowEl.style.top = `${index * rowHeight}px`;
+                rowEl.style.height = `${rowHeight}px`;
+                
+                eventsBySport[sport].forEach(event => {
+                    const dates = event.parsedDates;
+                    if (!dates) return;
+
+                    const startDay = dayOfYear(dates.start);
+                    const endDay = dayOfYear(dates.end);
+                    const duration = Math.max(1, endDay - startDay + 1);
+
+                    const leftPercent = ((startDay - 1) / daysInYear) * 100;
+                    const widthPercent = (duration / daysInYear) * 100;
+
+                    const barEl = document.createElement('div');
+                    barEl.className = `gantt-event-bar ${getSignificanceClass(event.significance)}`;
+                    barEl.style.left = `${leftPercent}%`;
+                    barEl.style.width = `${widthPercent}%`;
+                    barEl.style.top = `8px`;
+                    barEl.textContent = event.name;
+                    barEl.dataset.tooltip = `${event.name} (${event.date})`;
+                    barEl.dataset.eventId = event.id;
+                    
+                    rowEl.appendChild(barEl);
+                });
+                ganttTimeline.appendChild(rowEl);
+            });
+        }
+        
+        function populateFilters() {
+            while (sportFilter.options.length > 1) { sportFilter.remove(1); }
             if (!eventData) return;
-            const sports = [...new Set(eventData.map(e => e.sport))];
-            sports.sort();
+            const sports = [...new Set(eventData.map(e => e.sport))].sort();
             sports.forEach(sport => {
                 const option = document.createElement('option');
                 option.value = sport;
                 option.textContent = sport;
                 sportFilter.appendChild(option);
             });
-        }
-        
-        function setupChart() {
-            const ctx = document.getElementById('sports-chart').getContext('2d');
-            sportsChart = new Chart(ctx, {
-                type: 'doughnut',
-                data: { labels: [], datasets: [{ label: 'Events by Sport', data: [], backgroundColor: ['#06b6d4', '#0891b2', '#0e7490', '#164e63', '#67e8f9', '#22d3ee', '#a5f3fc', '#cffafe', '#155e75', '#0284c7', '#0369a1', '#075985'], borderColor: '#f8fafc', borderWidth: 4 }] },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { padding: 20, font: { size: 12 } } }, tooltip: { callbacks: { label: function(context) { let label = context.label || ''; if (label) { label += ': '; } if (context.parsed !== null) { label += context.parsed; } return label; } } } } }
+
+            monthFullNames.forEach((name, index) => {
+                const option = document.createElement('option');
+                option.value = index;
+                option.textContent = name;
+                monthFilter.appendChild(option);
             });
         }
         
-        function updateChart(filteredEvents) {
-            if (!sportsChart || !filteredEvents) return;
-            const sportCounts = filteredEvents.reduce((acc, event) => {
-                acc[event.sport] = (acc[event.sport] || 0) + 1;
-                return acc;
-            }, {});
-
-            sportsChart.data.labels = Object.keys(sportCounts);
-            sportsChart.data.datasets[0].data = Object.values(sportCounts);
-            sportsChart.update();
+        function parseCSV(text) {
+            const rows = text.trim().replace(/\r/g, '').split('\n');
+            const headers = rows[0].split(',').map(h => h.trim());
+            const data = rows.slice(1).map(row => {
+                const values = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+                let obj = {};
+                headers.forEach((header, index) => {
+                    obj[header] = (values[index] || '').trim().replace(/^"|"$/g, '');
+                });
+                return obj;
+            });
+            return data;
         }
 
         async function fetchAndProcessData() {
@@ -232,67 +388,116 @@
 
             try {
                 const response = await fetch(googleSheetUrl);
-                if (!response.ok) {
-                    throw new Error(`Network response was not ok: ${response.statusText}`);
-                }
+                if (!response.ok) throw new Error(`Network response was not ok: ${response.statusText}`);
                 const csvText = await response.text();
                 
-                const rows = csvText.trim().split('\n');
-                const headers = rows[0].split(',').map(h => h.trim());
-                const data = rows.slice(1).map(row => {
-                    const values = row.split(',').map(v => v.trim().replace(/"/g, ''));
-                    let obj = {};
-                    headers.forEach((header, index) => {
-                        obj[header] = values[index];
-                    });
-                    return obj;
-                });
+                const data = parseCSV(csvText);
 
-                eventData = data.map(item => ({
+                eventData = data.map((item, index) => ({
                     ...item,
+                    id: index,
                     relevance: item.relevance ? item.relevance.split(';').map(s => s.trim()) : [],
-                    formats: item.formats ? item.formats.split(';').map(s => s.trim()) : []
+                    parsedDates: parseDateString(item.date)
                 }));
 
                 document.querySelector('.loader-container').style.display = 'none';
-                populateSportFilter();
-                renderEvents();
+                populateFilters();
+                handleFilterChange();
 
             } catch (error) {
                 console.error('Failed to fetch or process event data:', error);
                 eventGrid.innerHTML = `<div class="md:col-span-2 xl:col-span-3 text-center text-red-700 bg-red-100 border border-red-300 rounded-lg p-6">
                     <h3 class="font-bold text-lg">Failed to Load Event Data</h3>
-                    <p class="text-sm mt-2">There was a problem fetching data from the provided URL. Please check the following:</p>
-                    <ul class="text-left text-sm mt-4 list-disc list-inside space-y-1">
-                        <li>The Google Sheet URL is correct.</li>
-                        <li>The sheet is correctly "Published to web" as a CSV.</li>
-                        <li>There are no network or CORS issues preventing access.</li>
-                    </ul>
+                    <p class="text-sm mt-2">There was a problem fetching data from the provided URL.</p>
                 </div>`;
             }
         }
 
-        marketFilter.addEventListener('change', (e) => { state.market = e.target.value; renderEvents(); });
-        sportFilter.addEventListener('change', (e) => { state.sport = e.target.value; renderEvents(); });
-        significanceFilter.addEventListener('click', (e) => {
-            if (e.target.tagName === 'BUTTON') {
-                state.significance = e.target.dataset.sig;
-                significanceFilter.querySelectorAll('button').forEach(btn => {
-                    btn.classList.remove('bg-cyan-600', 'text-white');
-                    btn.classList.add('bg-white', 'hover:bg-slate-100');
-                });
-                e.target.classList.add('bg-cyan-600', 'text-white');
-                e.target.classList.remove('bg-white', 'hover:bg-slate-100');
-                renderEvents();
+        function showEventModal(event) {
+            eventModalContent.innerHTML = `
+                <button id="close-modal" class="absolute top-3 right-3 text-slate-500 hover:text-slate-800 text-2xl">&times;</button>
+                <div class="p-6">
+                    <div class="flex justify-between items-start">
+                        <p class="text-xs text-slate-500">${event.date}</p>
+                        <span class="text-2xl">${getFlagForLocation(event.location)}</span>
+                    </div>
+                    <h3 class="font-bold text-xl mt-2 text-slate-900">${createSportIcon(event.sport)} ${event.name}</h3>
+                    <p class="text-base text-slate-600 mt-2">
+                        <span class="font-semibold">Key Markets:</span> 
+                        ${event.relevance.join(', ')}
+                    </p>
+                    <p class="text-base text-slate-600 mt-1">
+                        <span class="font-semibold">Location:</span> 
+                        ${event.location}
+                    </p>
+                </div>
+            `;
+            eventModal.classList.remove('hidden');
+            eventModal.classList.add('flex');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function hideEventModal() {
+            eventModal.classList.add('hidden');
+            eventModal.classList.remove('flex');
+            document.body.style.overflow = 'auto';
+        }
+
+        function handleFilterChange() {
+            const filtered = getFilteredEvents();
+            renderEventsList(filtered);
+            renderGanttChart(filtered);
+        }
+
+        marketFilter.addEventListener('change', (e) => { state.market = e.target.value; handleFilterChange(); });
+        sportFilter.addEventListener('change', (e) => { state.sport = e.target.value; handleFilterChange(); });
+        monthFilter.addEventListener('change', (e) => { state.month = e.target.value; handleFilterChange(); });
+
+        const tooltip = document.getElementById('gantt-tooltip');
+        document.getElementById('gantt-timeline').addEventListener('mouseover', e => {
+            if (e.target.classList.contains('gantt-event-bar')) {
+                tooltip.style.display = 'block';
+                tooltip.textContent = e.target.dataset.tooltip;
+            }
+        });
+        document.getElementById('gantt-timeline').addEventListener('mouseout', () => {
+            tooltip.style.display = 'none';
+        });
+        document.body.addEventListener('mousemove', e => {
+            if (tooltip.style.display === 'block') {
+                tooltip.style.left = `${e.clientX + 15}px`;
+                tooltip.style.top = `${e.clientY + 15}px`;
+            }
+        });
+
+        const headerScroll = document.getElementById('gantt-header-scroll');
+        const timelineScroll = document.getElementById('gantt-timeline-wrapper');
+        timelineScroll.addEventListener('scroll', () => {
+            headerScroll.scrollLeft = timelineScroll.scrollLeft;
+        });
+
+        document.getElementById('gantt-timeline').addEventListener('click', e => {
+            if (e.target.classList.contains('gantt-event-bar')) {
+                const eventId = parseInt(e.target.dataset.eventId, 10);
+                const event = eventData.find(ev => ev.id === eventId);
+                if (event) {
+                    showEventModal(event);
+                }
+            }
+        });
+
+        eventModal.addEventListener('click', e => {
+            if (e.target.id === 'event-modal' || e.target.id === 'close-modal') {
+                hideEventModal();
             }
         });
 
         document.addEventListener('DOMContentLoaded', () => {
-            setupChart();
             fetchAndProcessData();
         });
     </script>
 </body>
 </html>
+
 
 
