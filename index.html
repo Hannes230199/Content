@@ -94,7 +94,7 @@
             <h1 id="main-title" class="text-3xl md:text-4xl font-bold text-slate-900">RSMG Interactive Content Calendar</h1>
         </header>
 
-        <section id="filters" class="p-4 bg-white rounded-xl shadow-sm mb-8 sticky top-4 z-10">
+        <section id="filters" class="p-4 bg-white rounded-xl shadow-sm mb-8 sticky top-4 z-30">
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
                 <div>
                     <label for="year-filter" class="block text-sm font-medium text-slate-700 mb-1">Filter by Year</label>
@@ -191,6 +191,7 @@
     <script>
         let eventData = [];
         const today = new Date();
+        today.setHours(0,0,0,0);
 
         const state = {
             year: today.getFullYear(),
@@ -314,33 +315,51 @@
 
         function parseDateString(dateStr, eventYear) {
             if (!dateStr || typeof dateStr !== 'string') return null;
+            const parts = dateStr.split('-').map(p => p.trim());
+            const startPart = parts[0];
+            const endPart = parts.length > 1 ? parts[1] : startPart;
 
-            const regex = /^(\w{3})\s+(\d{1,2})(?:\s+-\s+(?:(\w{3})\s+)?(\d{1,2}))?$/;
-            const match = dateStr.match(regex);
-            if (!match) return null;
+            const parsePart = (part) => {
+                const words = part.split(' ');
+                const monthStr = words[0];
+                const dayStr = words[1];
+                const monthIndex = monthNames.findIndex(m => m.toLowerCase() === monthStr.toLowerCase());
+                if (monthIndex !== -1) {
+                    const day = parseInt(dayStr, 10);
+                    return { monthIndex, day };
+                }
+                return null;
+            };
 
-            const [, startMonthStr, startDayStr, endMonthStr, endDayStr] = match;
+            const startInfo = parsePart(startPart);
+            if (!startInfo || isNaN(startInfo.day)) return null;
+
+            let endInfo;
+            let endYear = eventYear;
             
-            const startMonthIndex = monthNames.findIndex(m => m.toLowerCase() === startMonthStr.toLowerCase());
-            if (startMonthIndex === -1) return null;
-            
-            const startDay = parseInt(startDayStr, 10);
-            const start = new Date(Date.UTC(eventYear, startMonthIndex, startDay));
-
-            if (endDayStr) {
-                let endMonthIndex = endMonthStr ? monthNames.findIndex(m => m.toLowerCase() === endMonthStr.toLowerCase()) : startMonthIndex;
-                if (endMonthIndex === -1) return null;
+            if (parts.length > 1) {
+                const endWords = endPart.split(' ');
+                const endMonthStr = endWords.length > 1 ? endWords[0] : null;
+                const endDayStr = endWords.length > 1 ? endWords[1] : endWords[0];
                 
+                let endMonthIndex = endMonthStr ? monthNames.findIndex(m => m.toLowerCase() === endMonthStr.toLowerCase()) : startInfo.monthIndex;
+                if (endMonthIndex === -1) endMonthIndex = startInfo.monthIndex;
+
                 const endDay = parseInt(endDayStr, 10);
-                let endYear = eventYear;
-                if (endMonthIndex < startMonthIndex) {
+                if (isNaN(endDay)) return null;
+                
+                if (endMonthIndex < startInfo.monthIndex) {
                     endYear++;
                 }
-                const end = new Date(Date.UTC(endYear, endMonthIndex, endDay));
-                return { start, end };
+                endInfo = { monthIndex: endMonthIndex, day: endDay };
+            } else {
+                endInfo = startInfo;
             }
-            
-            return { start, end: start };
+
+            const start = new Date(Date.UTC(eventYear, startInfo.monthIndex, startInfo.day));
+            const end = new Date(Date.UTC(endYear, endInfo.monthIndex, endInfo.day));
+
+            return { start, end };
         }
 
         function renderGanttChart(filteredEvents) {
@@ -610,3 +629,4 @@
     </script>
 </body>
 </html>
+
